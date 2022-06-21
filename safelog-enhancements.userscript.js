@@ -75,17 +75,19 @@ const observeAndAct = (selector, callback, includeSubTree = false) => {
             }
         });
 
-        setLocal.map((id) => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.value = 'LOCAL';
-                InputControl_TIMEOFDAY_timeOfDayChanged(id);
-            }
-        });
+        if (!document.URL.includes('logxid')) {
+            setLocal.map((id) => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.value = 'LOCAL';
+                    InputControl_TIMEOFDAY_timeOfDayChanged(id);
+                }
+            });
 
-        const logbookInUse = document.getElementById('ctl00_ctl00_contentHolder_pageBody_FAATEX___G_txtValue');
-        if (logbookInUse) {
-            logbookInUse.value = 'PPL';
+            const logbookInUse = document.getElementById('ctl00_ctl00_contentHolder_pageBody_FAATEX___G_txtValue');
+            if (logbookInUse) {
+                logbookInUse.value = 'PPL';
+            }
         }
     });
 })();
