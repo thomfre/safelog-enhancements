@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LimaNovember.Aero - Safelog Enhancements
 // @namespace    https://limanovember.aero/
-// @version      0.2
+// @version      0.3
 // @description  Make Safelog work like I want to
 // @icon         https://limanovember.aero/images/icon.png
 // @author       thomfre
@@ -30,6 +30,11 @@ const removeThings = [
     'ctl00_ctl00_contentHolder_pageBody_FAATEX___E_cacheButtonsContainer',
     'ctl00_ctl00_contentHolder_pageBody_FAATEX___F_cacheButtonsContainer',
     'ctl00_ctl00_contentHolder_pageBody_FAATEX___H_cacheButtonsContainer'
+];
+
+const setLocal = [
+    'ctl00_ctl00_contentHolder_pageBody_DEPARTURETIME_lstAMPM',
+    'ctl00_ctl00_contentHolder_pageBody_ARRIVALTIME_lstAMPM'
 ];
 
 const observeAndAct = (selector, callback, includeSubTree = false) => {
@@ -67,6 +72,14 @@ const observeAndAct = (selector, callback, includeSubTree = false) => {
             const el = document.getElementById(id);
             if (el) {
                 el.style.display = 'none';
+            }
+        });
+
+        setLocal.map((id) => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.value = 'LOCAL';
+                InputControl_TIMEOFDAY_timeOfDayChanged(id);
             }
         });
     });
