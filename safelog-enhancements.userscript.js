@@ -82,5 +82,10 @@ const observeAndAct = (selector, callback, includeSubTree = false) => {
                 InputControl_TIMEOFDAY_timeOfDayChanged(id);
             }
         });
+
+        const logbookInUse = document.getElementById('ctl00_ctl00_contentHolder_pageBody_FAATEX___G_txtValue');
+        if (logbookInUse) {
+            logbookInUse.value = 'PPL';
+        }
     });
 })();
