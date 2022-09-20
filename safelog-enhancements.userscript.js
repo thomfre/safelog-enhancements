@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LimaNovember.Aero - Safelog Enhancements
 // @namespace    https://limanovember.aero/
-// @version      0.3
+// @version      0.4
 // @description  Make Safelog work like I want to
 // @icon         https://limanovember.aero/images/icon.png
 // @author       thomfre
@@ -19,7 +19,9 @@ const disableOnfocusFor = [
     'ctl00_ctl00_contentHolder_pageBody_FAATEX___D_txtValue',
     'ctl00_ctl00_contentHolder_pageBody_FAATEX___E_txtValue',
     'ctl00_ctl00_contentHolder_pageBody_FAATEX___F_txtValue',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___H_txtValue'
+    'ctl00_ctl00_contentHolder_pageBody_FAATEX___H_txtValue',
+    'ctl00_ctl00_contentHolder_pageBody_FAATEX___I_txtValue',
+    'ctl00_ctl00_contentHolder_pageBody_FAATEX___J_txtValue'
 ];
 
 const removeThings = [
