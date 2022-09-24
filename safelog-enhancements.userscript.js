@@ -18,7 +18,10 @@ const disableOnfocusFor = [
     'ctl00_ctl00_contentHolder_pageBody_FAATEX___C_txtValue',
     'ctl00_ctl00_contentHolder_pageBody_FAATEX___D_txtValue',
     'ctl00_ctl00_contentHolder_pageBody_FAATEX___E_txtValue',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___F_txtValue'
+    'ctl00_ctl00_contentHolder_pageBody_FAATEX___F_txtValue',
+    'ctl00_ctl00_contentHolder_pageBody_FAATEX___H_txtValue',
+    'ctl00_ctl00_contentHolder_pageBody_FAATEX___I_txtValue',
+    'ctl00_ctl00_contentHolder_pageBody_FAATEX___J_txtValue'
 ];
 
 const removeThings = [
@@ -27,7 +30,10 @@ const removeThings = [
     'ctl00_ctl00_contentHolder_pageBody_FAATEX___C_cacheButtonsContainer',
     'ctl00_ctl00_contentHolder_pageBody_FAATEX___D_cacheButtonsContainer',
     'ctl00_ctl00_contentHolder_pageBody_FAATEX___E_cacheButtonsContainer',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___F_cacheButtonsContainer'
+    'ctl00_ctl00_contentHolder_pageBody_FAATEX___F_cacheButtonsContainer',
+    'ctl00_ctl00_contentHolder_pageBody_FAATEX___H_cacheButtonsContainer',
+    'ctl00_ctl00_contentHolder_pageBody_FAATEX___I_cacheButtonsContainer',
+    'ctl00_ctl00_contentHolder_pageBody_FAATEX___J_cacheButtonsContainer'
 ];
 
 const setLocal = [
