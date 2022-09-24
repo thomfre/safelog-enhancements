@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LimaNovember.Aero - Safelog Enhancements
 // @namespace    https://limanovember.aero/
-// @version      0.4
+// @version      0.5
 // @description  Make Safelog work like I want to
 // @icon         https://limanovember.aero/images/icon.png
 // @author       thomfre
@@ -18,10 +18,7 @@ const disableOnfocusFor = [
     'ctl00_ctl00_contentHolder_pageBody_FAATEX___C_txtValue',
     'ctl00_ctl00_contentHolder_pageBody_FAATEX___D_txtValue',
     'ctl00_ctl00_contentHolder_pageBody_FAATEX___E_txtValue',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___F_txtValue',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___H_txtValue',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___I_txtValue',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___J_txtValue'
+    'ctl00_ctl00_contentHolder_pageBody_FAATEX___F_txtValue'
 ];
 
 const removeThings = [
@@ -30,8 +27,7 @@ const removeThings = [
     'ctl00_ctl00_contentHolder_pageBody_FAATEX___C_cacheButtonsContainer',
     'ctl00_ctl00_contentHolder_pageBody_FAATEX___D_cacheButtonsContainer',
     'ctl00_ctl00_contentHolder_pageBody_FAATEX___E_cacheButtonsContainer',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___F_cacheButtonsContainer',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___H_cacheButtonsContainer'
+    'ctl00_ctl00_contentHolder_pageBody_FAATEX___F_cacheButtonsContainer'
 ];
 
 const setLocal = [
@@ -76,6 +72,11 @@ const observeAndAct = (selector, callback, includeSubTree = false) => {
                 el.style.display = 'none';
             }
         });
+
+        const instrumentApproaches = document.querySelector('tr[etctexttype="8"]');
+        if (instrumentApproaches) {
+            instrumentApproaches.childElements().at(2).innerText = 'Links';
+        }
 
         if (!document.URL.includes('logxid')) {
             setLocal.map((id) => {
