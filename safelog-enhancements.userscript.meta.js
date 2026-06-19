@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LimaNovember.Aero - Safelog Enhancements
 // @namespace    https://limanovember.aero/
-// @version      0.5
+// @version      0.6
 // @description  Make Safelog work like I want to
 // @icon         https://limanovember.aero/images/icon.png
 // @author       thomfre
