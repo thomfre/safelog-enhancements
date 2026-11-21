@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LimaNovember.Aero - Safelog Enhancements
 // @namespace    https://limanovember.aero/
-// @version      0.6
+// @version      0.7
 // @description  Make Safelog work like I want to
 // @icon         https://limanovember.aero/images/icon.png
 // @author       thomfre
@@ -12,155 +12,200 @@
 // @updateURL    https://raw.githubusercontent.com/thomfre/safelog-enhancements/main/safelog-enhancements.userscript.meta.js
 // ==/UserScript==
 
-const disableOnfocusFor = [
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___A_txtValue',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___B_txtValue',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___C_txtValue',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___D_txtValue',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___E_txtValue',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___F_txtValue',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___H_txtValue',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___I_txtValue',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___J_txtValue'
-];
+const ID_PREFIX = 'ctl00_ctl00_contentHolder_pageBody_';
+const FORM_TABLE_ID = `${ID_PREFIX}formLayoutTable`;
 
-const removeThings = [
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___A_cacheButtonsContainer',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___B_cacheButtonsContainer',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___C_cacheButtonsContainer',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___D_cacheButtonsContainer',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___E_cacheButtonsContainer',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___F_cacheButtonsContainer',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___H_cacheButtonsContainer',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___I_cacheButtonsContainer',
-    'ctl00_ctl00_contentHolder_pageBody_FAATEX___J_cacheButtonsContainer'
-];
+// Custom text fields (FAATEX___X) where suggestions and quick buttons are just noise.
+// G (Logbook in use) is left alone on purpose. K, L and M (Student Lesson, Operating School,
+// Student Course) are new in Safelog - add them here if you want them quiet as well.
+const quietTextFields = ['A', 'B', 'C', 'D', 'E', 'F', 'H', 'I', 'J'];
 
-const setLocal = [
-    'ctl00_ctl00_contentHolder_pageBody_DEPARTURETIME_lstAMPM',
-    'ctl00_ctl00_contentHolder_pageBody_ARRIVALTIME_lstAMPM'
-];
+// Time-of-day fields that should default to LOCAL on new flights
+const setLocal = [`${ID_PREFIX}DEPARTURETIME_lstAMPM`, `${ID_PREFIX}ARRIVALTIME_lstAMPM`];
 
-let callbackRan = false;
+// The "Instrument Approaches" free text type (ETCTEXT type id 8) is used for links
+const ETCTEXT_ORIGINAL_LABEL = 'Instrument Approaches';
+const ETCTEXT_NEW_LABEL = 'Links';
 
-const observeAndAct = (selector, callback, includeSubTree = false) => {
-    const element = document.querySelector(selector);
+const pageWindow = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
-    if (!element) {
-        console.warn("Form element not found, aborting");
-        return;
-    };
-
-    const observer = new MutationObserver(callback);
-
-    const observerConfig = {
-        subtree: includeSubTree,
-        attributes: true,
-        childList: true,
-        characterData: true
-    };
-
-    observer.observe(element, observerConfig);
-    observeForInstrumentAppRow();
-
-    setTimeout(() => {
-        if (!callbackRan) {
-            callback();
-        }
-    }, 2000);
-
-    return observer;
+const addStyle = (css) => {
+    const style = document.createElement('style');
+    style.textContent = css;
+    document.head.appendChild(style);
 };
 
-const observeForInstrumentAppRow = () => {
-    const table = document.getElementById('ctl00_ctl00_contentHolder_pageBody_formLayoutTable');
-    if (!table) {
-        console.warn("formLayoutTable not found, aborting row watcher");
+const quietenTextFields = () => {
+    const css = [];
+
+    quietTextFields.forEach((letter) => {
+        const containerId = `${ID_PREFIX}FAATEX___${letter}`;
+
+        // Recent-value buttons + the new suggestion dropdown (rendered by STEXT.js)
+        css.push(`#${containerId}_cacheButtonsContainer`);
+        css.push(`#${containerId} ul.dropdown-list`);
+
+        const input = document.getElementById(`${containerId}_txtValue`);
+        if (input) {
+            input.onfocus = null;
+            input.setAttribute('autocomplete', 'off');
+        }
+
+        // Keep the suggestion list empty as well as hidden, so that Enter/arrow keys
+        // can't pick a suggestion that isn't visible
+        const dropdown = document.querySelector(`#${containerId} ul.dropdown-list`);
+        if (dropdown) {
+            const empty = () => {
+                if (dropdown.firstChild) {
+                    dropdown.replaceChildren();
+                }
+            };
+            empty();
+            new MutationObserver(empty).observe(dropdown, { childList: true });
+        }
+    });
+
+    addStyle(`${css.join(',\n')} { display: none !important; }`);
+};
+
+// Renames "Instrument Approaches" to "Links" inside the free text (ETCTEXT) control.
+// The control is rendered client side, so we watch it and relabel whatever shows up.
+const relabelEtcText = () => {
+    const container = document.getElementById(`${ID_PREFIX}ETCTEXT`);
+    if (!container) {
         return;
     }
 
-    const renameRowIfMatch = (row) => {
-        const textarea = row.querySelector('textarea[data-input-for-etctext-type-id="8"]');
-        if (!textarea) return;
+    const skipTags = ['TEXTAREA', 'SCRIPT', 'STYLE'];
+    const labelAttributes = ['placeholder', 'title', 'aria-label', 'value'];
 
-        const label = row.querySelector('td.label');
-        if (label) {
-            label.innerText = 'Links';
+    const relabelTextNode = (node) => {
+        // The hidden textarea holds the JSON that is posted back - never touch that
+        if (node.parentElement && skipTags.includes(node.parentElement.tagName)) return;
+
+        if (node.nodeValue && node.nodeValue.includes(ETCTEXT_ORIGINAL_LABEL)) {
+            node.nodeValue = node.nodeValue.replaceAll(ETCTEXT_ORIGINAL_LABEL, ETCTEXT_NEW_LABEL);
         }
     };
 
-    // Handle rows that might already be present
-    table.querySelectorAll('tr.IC-ETCTEXT-ITEM-ROW').forEach(renameRowIfMatch);
+    const relabelElement = (el) => {
+        if (skipTags.includes(el.tagName)) return;
 
-    const rowObserver = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-            mutation.addedNodes.forEach((node) => {
-                if (node.nodeType !== 1) return; // skip text nodes
+        labelAttributes.forEach((attr) => {
+            if (attr === 'value' && !['BUTTON', 'INPUT'].includes(el.tagName)) return;
+            if (attr === 'value' && el.tagName === 'INPUT' && !['button', 'submit'].includes(el.type)) return;
 
-                if (node.matches && node.matches('tr.IC-ETCTEXT-ITEM-ROW')) {
-                    renameRowIfMatch(node);
-                } else if (node.querySelectorAll) {
-                    node.querySelectorAll('tr.IC-ETCTEXT-ITEM-ROW').forEach(renameRowIfMatch);
-                }
-            });
+            const value = el.getAttribute(attr);
+            if (value && value.includes(ETCTEXT_ORIGINAL_LABEL)) {
+                el.setAttribute(attr, value.replaceAll(ETCTEXT_ORIGINAL_LABEL, ETCTEXT_NEW_LABEL));
+            }
         });
-    });
+    };
 
-    rowObserver.observe(table, {
+    const relabel = (root) => {
+        if (root.nodeType === Node.TEXT_NODE) {
+            relabelTextNode(root);
+            return;
+        }
+        if (root.nodeType !== Node.ELEMENT_NODE) return;
+
+        relabelElement(root);
+        root.querySelectorAll('*').forEach(relabelElement);
+
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        while (walker.nextNode()) {
+            relabelTextNode(walker.currentNode);
+        }
+    };
+
+    relabel(container);
+
+    new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'characterData') {
+                relabelTextNode(mutation.target);
+            } else if (mutation.type === 'attributes') {
+                relabelElement(mutation.target);
+            } else {
+                mutation.addedNodes.forEach(relabel);
+            }
+        });
+    }).observe(container, {
         childList: true,
-        subtree: true
+        subtree: true,
+        characterData: true,
+        attributes: true,
+        attributeFilter: labelAttributes
+    });
+};
+
+const isNewFlight = () => {
+    if (document.URL.includes('logxid')) return false;
+
+    // The page header says "New Flight" (SINGLEFLIGHTNEW icon) when adding a flight
+    const icon = document.querySelector('img.pageHeaderCaptionIcon');
+    return !icon || (icon.getAttribute('src') || '').includes('SINGLEFLIGHTNEW');
+};
+
+const setNewFlightDefaults = () => {
+    setLocal.forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        if (el.value !== 'LOCAL') {
+            el.value = 'LOCAL';
+            if (typeof pageWindow.InputControl_TIMEOFDAY_timeOfDayChanged === 'function') {
+                pageWindow.InputControl_TIMEOFDAY_timeOfDayChanged(id);
+            }
+        }
     });
 
-    return rowObserver;
+    const logbookInUse = document.getElementById(`${ID_PREFIX}FAATEX___G_txtValue`);
+    if (logbookInUse && !logbookInUse.value) {
+        logbookInUse.value = 'PPL';
+    }
+
+    const holdersOperatingCapacity = document.getElementById(`${ID_PREFIX}HOLDERSOPERATINGCAPACITY_lstValue`);
+    if (holdersOperatingCapacity) {
+        holdersOperatingCapacity.value = '16'; // 16 = INST
+    }
+};
+
+const enhance = () => {
+    console.log('Safelog Enhancements: form found, doing work');
+
+    quietenTextFields();
+    relabelEtcText();
+
+    if (isNewFlight()) {
+        setNewFlightDefaults();
+    }
+};
+
+// The flight form can show up after the script has started, so wait for it (but not forever)
+const whenFormIsReady = (callback, timeoutMs = 15000) => {
+    if (document.getElementById(FORM_TABLE_ID)) {
+        callback();
+        return;
+    }
+
+    const observer = new MutationObserver(() => {
+        if (document.getElementById(FORM_TABLE_ID)) {
+            observer.disconnect();
+            clearTimeout(timer);
+            callback();
+        }
+    });
+
+    const timer = setTimeout(() => observer.disconnect(), timeoutMs);
+
+    observer.observe(document.documentElement, { childList: true, subtree: true });
 };
 
 (function () {
     'use strict';
 
-    console.log("Starting Safelog Enhancements");
+    console.log('Starting Safelog Enhancements');
 
-    observeAndAct(`table.layout`, () => {
-        console.log("Form found, doing work");
-        callbackRan = true;
-
-        disableOnfocusFor.map((id) => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.onfocus = () => {};
-                el.setAttribute('autocomplete', 'off');
-            }
-        });
-
-        removeThings.map((id) => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.style.display = 'none';
-            }
-        });
-
-        const instrumentApproaches = document.querySelector('#ctl00_ctl00_contentHolder_pageBody_ETCTEXT a[data-create-button-for-etctext-type-id="8"]');
-        if (instrumentApproaches) {
-            instrumentApproaches.innerText = 'Links';
-        }
-
-        if (!document.URL.includes('logxid')) {
-            setLocal.map((id) => {
-                const el = document.getElementById(id);
-                if (el) {
-                    el.value = 'LOCAL';
-                    InputControl_TIMEOFDAY_timeOfDayChanged(id);
-                }
-            });
-
-            const logbookInUse = document.getElementById('ctl00_ctl00_contentHolder_pageBody_FAATEX___G_txtValue');
-            if (logbookInUse) {
-                logbookInUse.value = 'PPL';
-            }
-
-            const holdersOperatingCapacity = document.getElementById('ctl00_ctl00_contentHolder_pageBody_HOLDERSOPERATINGCAPACITY_lstValue');
-            if (holdersOperatingCapacity) {
-                holdersOperatingCapacity.value = '16'; // 16 = INST
-            }
-        }
-    });
+    whenFormIsReady(enhance);
 })();
